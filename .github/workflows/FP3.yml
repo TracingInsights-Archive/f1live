@@ -1,9 +1,9 @@
-name: F1 Live Race Control Monitor
+name: FP3
 
 on:
   schedule:
     # Run at specific race times (example for Abu Dhabi GP - adjust as needed)
-    - cron: '0 13 * * SUN'
+    - cron: '20 10 7 12 *'
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
