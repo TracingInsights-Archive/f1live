@@ -144,7 +144,7 @@ def monitor_live_race_control():
 
 
 if __name__ == "__main__":
-    fastf1.Cache.enable_cache(False)
+    # fastf1.Cache.enable_cache(False)
     logger = setup_logging()
 
     try:
