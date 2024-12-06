@@ -36,12 +36,17 @@ def setup_logging():
 
 
 def create_signalr_client(logger):
-    return SignalRClient(
-        filename=None,  # We don't need to save to file
+    # Create a temporary file for SignalRClient
+    temp_file = "f1_live_timing.txt"
+    client = SignalRClient(
+        filename=temp_file,  # Provide a filename
         debug=False,
-        timeout=300,  # 5 minute timeout
+        timeout=300,
         logger=logger,
+        filemode="w",  # Write mode
     )
+    client.start()
+    return client
 
 
 def setup_bluesky():
@@ -131,16 +136,20 @@ def monitor_live_race_control():
 
     while True:
         try:
-            messages = client.get_data("RaceControlMessages")
+            messages = client.get_messages()
             if messages:
                 process_messages(messages, processed_messages, bsky, logger)
-            time.sleep(1)  # Add small delay to prevent excessive polling
+            time.sleep(1)
 
         except Exception as e:
             logger.error(f"Connection error: {str(e)}")
             logger.info("Attempting to reconnect...")
+            try:
+                client.stop()
+            except:
+                pass
             client = create_signalr_client(logger)
-            time.sleep(5)  # Wait before reconnecting
+            time.sleep(5)
 
 
 if __name__ == "__main__":
