@@ -1,2 +1,3 @@
 fastf1
 atproto
+urllib3
