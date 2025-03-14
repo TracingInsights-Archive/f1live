@@ -12,31 +12,34 @@ BASE_URL = "https://api.openf1.org/v1/race_control"
 HASHTAGS = "#f1 #formula1 #live #AusGP #AustralianGP"
 REFRESH_INTERVAL = 5  # seconds
 
-
 FLAG_EMOJIS = {
-    "YELLOW": "⚠️",
-    "RED": "🔴",
     "GREEN": "🟢",
+    "RED": "🔴",
+    "YELLOW": "🟡",
+    "DOUBLE_YELLOW": "🟡🟡",
     "BLUE": "🔵",
     "CHEQUERED": "🏁",
     "BLACK": "⚫",
-    "BLACK_AND_ORANGE": "🟧",
-    "BLACK_AND_WHITE": "⬛⬜",
+    "BLACK_AND_ORANGE": "⚫🟧",
+    "BLACK_AND_WHITE": "⚫⚪",
     "WHITE": "⚪",
-    "DOUBLE_YELLOW": "⚠️⚠️",
+    "CLEAR": "⚪",
 }
 
 CATEGORY_EMOJIS = {
+    "Other": "ℹ️",
+    "Flag": "🚩",
+    "Drs": "📡",
+    "SafetyCar": "🚨",
+    "Incident": "💥",
+    "Track": "🛣️",
+    "Weather": "🌦️",
+    "Technical": "🔧",
+    "Timing": "⏱️",
+    "Stewards": "👨‍⚖️",
     "SECTOR": "📍",
-    "TRACK": "🛣️",
-    "FLAG": "🚩",
-    "DRIVER": "🏎️",
-    "CAR": "🏎️",
-    "RACE_CONTROL": "📊",
-    "SAFETY_CAR": "🚨",
-    "DRS": "💨",
-    "WARNING": "⚠️",
     "TRACK_STATUS": "🏁",
+    "WARNING": "⚠️",
 }
 
 
@@ -78,22 +81,40 @@ def format_bluesky_message(df: pd.DataFrame) -> str:
         return "No F1 updates available"
 
     latest_message = df.iloc[0]
-    return f"🏎 F1 Update:\n{latest_message['message']}\nCategory: {latest_message['category']}\nFlag: {latest_message['flag']}\nScope: {latest_message['scope']}"
+    flag_emoji = FLAG_EMOJIS.get(latest_message["flag"], "")
+    category_emoji = CATEGORY_EMOJIS.get(latest_message["category"], "ℹ️")
+
+    time_str = (
+        latest_message["timestamp"].strftime("%H:%M:%S UTC")
+        if "timestamp" in latest_message
+        else ""
+    )
+
+    message = f"{flag_emoji} {category_emoji} F1 Race Control ({time_str}):\n{latest_message['message']}"
+
+    if latest_message["scope"]:
+        message += f"\nScope: {latest_message['scope']}"
+
+    message += f"\n\n{HASHTAGS}"
+
+    return message
 
 
 def create_hashtag_facets(text: str) -> list:
     facets = []
-    for word in text.split():
+    byte_text = text.encode("utf-8")
+    words = text.split()
+    current_position = 0
+
+    for word in words:
         if word.startswith("#"):
-            start = text.index(word)
+            byte_start = len(text[: text.index(word)].encode("utf-8"))
+            byte_end = byte_start + len(word.encode("utf-8"))
             facets.append(
                 {
-                    "index": {"byteStart": start, "byteEnd": start + len(word)},
+                    "index": {"byteStart": byte_start, "byteEnd": byte_end},
                     "features": [
-                        {
-                            "$type": "app.bsky.richtext.facet#tag",
-                            "tag": word[1:],  # Remove # prefix
-                        }
+                        {"$type": "app.bsky.richtext.facet#tag", "tag": word[1:]}
                     ],
                 }
             )
@@ -123,21 +144,31 @@ def monitor_f1_data(bluesky_client: Client):
             display_f1_data(df)
 
             if df is not None and not df.empty:
+                # Include timestamp in the comparison tuple
                 current_messages = set(
                     tuple(row)
-                    for row in df[["message", "category", "flag", "scope"]].itertuples(
-                        index=False
-                    )
+                    for row in df[
+                        ["message", "category", "flag", "scope", "timestamp"]
+                    ].itertuples(index=False)
                 )
-
                 new_messages = current_messages - previous_messages
 
                 for message in new_messages:
-                    flag_emoji = FLAG_EMOJIS.get(message[2], "")
-                    category_emoji = CATEGORY_EMOJIS.get(message[1], "")
-
-                    bluesky_post = f"{category_emoji} {flag_emoji} F1 Update:\n{message[0]}\nCategory: {message[1]}\nFlag: {message[2]}\nScope: {message[3]}\n\n{HASHTAGS}"
+                    bluesky_post = format_bluesky_message(
+                        pd.DataFrame(
+                            [
+                                {
+                                    "message": message[0],
+                                    "category": message[1],
+                                    "flag": message[2],
+                                    "scope": message[3],
+                                    "timestamp": message[4],
+                                }
+                            ]
+                        )
+                    )
                     post_to_bluesky(bluesky_client, bluesky_post)
+                    print(f"Posted new message: {message[0]}")  # Added logging
 
                 previous_messages = current_messages
 
@@ -150,10 +181,7 @@ if __name__ == "__main__":
         # Setup Bluesky client
         bluesky_client = Client()
         bluesky_client.login(
-            "tracing.insights+live@gmail.com",
-            "Rg2F8XSw!26aZeZ",
-            # os.environ.get("BLUESKY_USERNAME"),
-            # os.environ.get("BLUESKY_PASSWORD")
+            os.environ.get("BLUESKY_USERNAME"), os.environ.get("BLUESKY_PASSWORD")
         )
 
         # Start monitoring with Bluesky integration
