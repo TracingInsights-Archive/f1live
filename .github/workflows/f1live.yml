@@ -1,29 +1,29 @@
-name: F1 Live Monitor
+# name: F1 Live Monitor
 
-on:
-  schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes
-  workflow_dispatch:  # Allows manual trigger
+# on:
+#   schedule:
+#     - cron: '*/5 * * * *'  # Runs every 5 minutes
+#   workflow_dispatch:  # Allows manual trigger
 
-jobs:
-  monitor:
-    runs-on: ubuntu-latest
+# jobs:
+#   monitor:
+#     runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v3
+#     steps:
+#     - uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+#     - name: Set up Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: '3.10'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pandas atproto
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install pandas atproto
 
-    - name: Run F1 monitor
-      env:
-        BLUESKY_USERNAME: ${{ secrets.BLUESKY_USERNAME }}
-        BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
-      run: python hello.py
+#     - name: Run F1 monitor
+#       env:
+#         BLUESKY_USERNAME: ${{ secrets.BLUESKY_USERNAME }}
+#         BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
+#       run: python hello.py
